@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
 import logging
 import psycopg2
-from src import lmsr
-from src.market import Market
-from src.transaction import Transaction
+from src.market import lmsr
+from src.market.market import Market
+from src.market.transaction import Transaction
 from src.user import User
 
 logger = logging.getLogger("database")

@@ -1,5 +1,5 @@
 import math
-from src.market import Market
+from src.market.market import Market
 
 def cost_function(market: Market):
     yes_shares = market.yes_shares
