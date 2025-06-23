@@ -6,14 +6,24 @@ def cost_function(market: Market):
     no_shares = market.no_shares
     liquidity = market.liquidity
 
-    return liquidity * math.log(math.exp(yes_shares / liquidity) + math.exp(no_shares / liquidity))
+    max_yn_shares = max(yes_shares, no_shares)
+    return liquidity * (max_yn_shares / liquidity + math.log(
+        math.exp((yes_shares - max_yn_shares) / liquidity)
+        + math.exp((no_shares - max_yn_shares) / liquidity)
+    ))
+    # return liquidity * math.log(math.exp(yes_shares / liquidity) + math.exp(no_shares / liquidity))
 
 def price_function(market: Market):
     yes_shares = market.yes_shares
     no_shares = market.no_shares
     liquidity = market.liquidity
 
-    return math.exp(yes_shares / liquidity) / (math.exp(yes_shares / liquidity) + math.exp(no_shares / liquidity))
+    max_yn_shares = max(yes_shares, no_shares)
+    return math.exp((yes_shares - max_yn_shares) / liquidity) / (
+        math.exp((yes_shares - max_yn_shares) / liquidity)
+        + math.exp((no_shares - max_yn_shares) / liquidity)
+    )
+    # return math.exp(yes_shares / liquidity) / (math.exp(yes_shares / liquidity) + math.exp(no_shares / liquidity))
 
 def get_cost(amount: float, up_or_down: bool, market: Market) -> float:
     if up_or_down:
