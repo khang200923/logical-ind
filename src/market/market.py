@@ -6,7 +6,6 @@ class Market:
     title: str
     description: str
     created_at: str
-    price: float
     liquidity: float
     yes_shares: float
     no_shares: float

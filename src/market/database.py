@@ -4,7 +4,7 @@ import psycopg2
 from src.market import lmsr
 from src.market.market import Market
 from src.market.transaction import Transaction
-from src.user import User
+from src.market.user import User
 
 logger = logging.getLogger("database")
 
@@ -46,7 +46,6 @@ class Database:
                     title TEXT NOT NULL,
                     description TEXT NOT NULL,
                     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-                    price DECIMAL(10, 8) NOT NULL DEFAULT 0.50000000 CHECK (price >= 0 AND price <= 1),
                     liquidity DECIMAL(16, 8) NOT NULL,
                     yes_shares DECIMAL(16, 8) NOT NULL DEFAULT 0.00,
                     no_shares DECIMAL(16, 8) NOT NULL DEFAULT 0.00,
@@ -108,37 +107,37 @@ class Database:
     def create_market(self, title: str, description: str, liquidity: float) -> Market:
         with self.connection:
             with self.connection.cursor() as cursor:
-                cursor.execute("INSERT INTO markets (title, description, liquidity) VALUES (%s, %s, %s) RETURNING id, title, description, created_at, price, liquidity, yes_shares, no_shares, resolution;", (title, description, liquidity))
+                cursor.execute("INSERT INTO markets (title, description, liquidity) VALUES (%s, %s, %s) RETURNING id, title, description, created_at, liquidity, yes_shares, no_shares, resolution;", (title, description, liquidity))
                 res = cursor.fetchone()
                 assert res is not None, "Failed to create market"
-        return Market(id=res[0], title=res[1], description=res[2], created_at=res[3], price=res[4], liquidity=res[5], yes_shares=res[6], no_shares=res[7], resolution=res[8])
+        return Market(id=res[0], title=res[1], description=res[2], created_at=res[3], liquidity=res[4], yes_shares=res[5], no_shares=res[6], resolution=res[7])
 
     def get_market(self, market_id: int, cur: psycopg2.extensions.cursor | None = None) -> Market:
         if cur is not None:
-            cur.execute("SELECT id, title, description, created_at, price, liquidity, yes_shares, no_shares, resolution FROM markets WHERE id = %s;", (market_id,))
+            cur.execute("SELECT id, title, description, created_at, liquidity, yes_shares, no_shares, resolution FROM markets WHERE id = %s;", (market_id,))
             res = cur.fetchone()
             if res is None:
                 raise ValueError(f"Market with ID {market_id} not found")
         else:
             with self.connection:
                 with self.connection.cursor() as cursor:
-                    cursor.execute("SELECT id, title, description, created_at, price, liquidity, yes_shares, no_shares, resolution FROM markets WHERE id = %s;", (market_id,))
+                    cursor.execute("SELECT id, title, description, created_at, liquidity, yes_shares, no_shares, resolution FROM markets WHERE id = %s;", (market_id,))
                     res = cursor.fetchone()
                     if res is None:
                         raise ValueError(f"Market with ID {market_id} not found")
-        return Market(id=res[0], title=res[1], description=res[2], created_at=res[3], price=res[4], liquidity=res[5], yes_shares=res[6], no_shares=res[7], resolution=res[8])
+        return Market(id=res[0], title=res[1], description=res[2], created_at=res[3], liquidity=res[4], yes_shares=res[5], no_shares=res[6], resolution=res[7])
 
     def update_market(self, market: Market, cur: psycopg2.extensions.cursor | None = None):
         if cur is not None:
-            cur.execute("UPDATE markets SET title = %s, description = %s, price = %s, liquidity = %s, yes_shares = %s, no_shares = %s, resolution = %s WHERE id = %s;",
-                        (market.title, market.description, market.price, market.liquidity, market.yes_shares, market.no_shares, market.resolution, market.id))
+            cur.execute("UPDATE markets SET title = %s, description = %s, liquidity = %s, yes_shares = %s, no_shares = %s, resolution = %s WHERE id = %s;",
+                        (market.title, market.description, market.liquidity, market.yes_shares, market.no_shares, market.resolution, market.id))
             if cur.rowcount == 0:
                 raise ValueError(f"Market with ID {market.id} not found")
             return
         with self.connection:
             with self.connection.cursor() as cursor:
-                cursor.execute("UPDATE markets SET title = %s, description = %s, price = %s, liquidity = %s, yes_shares = %s, no_shares = %s, resolution = %s WHERE id = %s;",
-                               (market.title, market.description, market.price, market.liquidity, market.yes_shares, market.no_shares, market.resolution, market.id))
+                cursor.execute("UPDATE markets SET title = %s, description = %s, liquidity = %s, yes_shares = %s, no_shares = %s, resolution = %s WHERE id = %s;",
+                               (market.title, market.description, market.liquidity, market.yes_shares, market.no_shares, market.resolution, market.id))
                 if cursor.rowcount == 0:
                     raise ValueError(f"Market with ID {market.id} not found")
 
@@ -173,7 +172,6 @@ class Database:
                     market.yes_shares += amount
                 else:
                     market.no_shares += amount
-                market.price = lmsr.price_function(market)
                 self.update_market(market, cursor)
 
     def get_all_transactions_of_market(self, market_id: int, cur: psycopg2.extensions.cursor | None = None) -> list[Transaction]:
@@ -202,7 +200,7 @@ class Database:
                 if cursor.rowcount == 0:
                     raise ValueError(f"Market with ID {market.id} not found")
 
-                transactions = self.get_all_transactions_of_market(market.id)
+                transactions = self.get_all_transactions_of_market(market.id, cursor)
                 for transaction in transactions:
                     user = self.get_user(transaction.user_id, cursor)
                     if transaction.up_or_down == resolution:

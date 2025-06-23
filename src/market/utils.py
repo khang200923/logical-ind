@@ -1,4 +1,5 @@
 import math
+from src.market.lmsr import price_function
 from src.market.market import Market
 
 def predict_amount_required_for_price(
@@ -6,7 +7,7 @@ def predict_amount_required_for_price(
     up_or_down: bool,
     market: Market,
 ) -> float:
-    current_price = market.price
+    current_price = price_function(market)
     target_yes_shares = market.liquidity * (
         math.log(target_price / (1 - target_price))
         - math.log(current_price / (1 - current_price))
@@ -58,7 +59,7 @@ def limit_order_to_price(
     target_price: float,
     market: Market,
 ):
-    current_price = market.price
+    current_price = price_function(market)
     up_or_down = target_price > current_price
     willing_amount = cost_to_amount(bid, up_or_down, market)
     required_amount = predict_amount_required_for_price(target_price, up_or_down, market)
